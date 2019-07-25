@@ -8,18 +8,23 @@ import cn.afterturn.easypoi.pdf.PdfExportUtil;
 import cn.afterturn.easypoi.pdf.entity.PdfExportParams;
 import cn.afterturn.easypoi.util.PoiMergeCellUtil;
 import cn.afterturn.easypoi.view.PoiBaseView;
+import cn.afterturn.easypoi.word.WordExportUtil;
 import com.itextpdf.text.Document;
-import com.itextpdf.text.Font;
 import com.itextpdf.text.Image;
 import com.itextpdf.text.Rectangle;
 import com.itextpdf.text.pdf.*;
+import com.spire.doc.FileFormat;
+import com.spire.doc.Section;
+import com.spire.doc.documents.Paragraph;
+import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
 
 import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -28,8 +33,22 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
-/***
- * @Author kanglin.liang
+/**@Description
+ *  该工具类包含了导出excel、word、pdf。
+ *  excel和word导出主要使用了esaypoi。其中的指令参考官网教程：http://easypoi.mydoc.io/
+ *  pdf主要使用了esaypoi生成word，再利用spire合成后生成pdf，再利用pdfbox去除第一页中水印
+ *
+ *  excel分为三种：
+ *      普通导出excel
+ *      根据模板导出excel(推荐)
+ *      根据模板合并单元格导出excel(推荐)
+ *  word
+ *      根据word模板导出word文档(推荐)
+ *  pdf分为三种：
+ *      普通导出pdf
+ *      根据pdf模板导出pdf
+ *      根据word模板生成word在转成pdf文档(推荐)
+ * @Author kuiwang
  * @Date 2019/2/19 9:45
  * @Description: 导出方法包装类
  */
@@ -41,6 +60,7 @@ public class ExportUtil extends PoiBaseView {
 
     public static final String EXPORT_SUFFIX_EXCEL = ".xls";
     public static final String EXPORT_SUFFIX_PDF = ".pdf";
+    public static final String EXPORT_SUFFIX_DOCX = ".docx";
 
     // 传入文字map数据
     public static final String DATA_CHAR_MAP = "charMap";
@@ -52,8 +72,143 @@ public class ExportUtil extends PoiBaseView {
     }
 
     /**
-     * 导出pdf
-     * @throws IOException
+     * @Description 导出excel
+     * @Author kuiwang
+     * @Date 10:37 2019/7/25
+     * @param title 标题
+     * @param fileName 文件名称
+     * @param pojoClass 实体类  **.class
+     * @param dataSet   数据集合
+     * @param request
+     * @param response
+     * @Return
+     */
+    protected void writeToExcel(String title, String fileName, Class<?> pojoClass, Collection<?> dataSet, HttpServletRequest request, HttpServletResponse response) {
+        try {
+        ExportParams params = new ExportParams(title, "测试", ExcelType.XSSF);
+        Workbook workbook = ExcelExportUtil.exportExcel(params, pojoClass, dataSet);
+        if (isIE(request)) {
+            fileName = URLEncoder.encode(fileName,ENCODING_UTF8);
+        } else {
+            fileName = new String(fileName.getBytes(ENCODING_UTF_8),ENCODING_ISO);
+        }
+        response.setHeader("content-disposition", "attachment;filename=" + fileName +EXPORT_SUFFIX_EXCEL);
+        response.setContentType("application/octet-stream");
+        response.flushBuffer();
+        workbook.write(response.getOutputStream());
+        } catch (UnsupportedEncodingException e) {
+            logger.error("导出excel失败", e);
+        } catch (IOException e) {
+            logger.error("导出excel失败", e);
+        }
+    }
+
+    /**
+     * @Description 根据模板导出excel
+     * @Author kuiwang
+     * @Date 10:41 2019/7/25
+     * @param fileName  导出文件名称
+     * @param excelTemplatePath     excel模板路径 **.xls
+     * @param map   数据集合
+     * @param request
+     * @param response
+     * @Return
+     */
+    protected void writeToExcelTemplate(String fileName, String excelTemplatePath, Map<String, Object> map, HttpServletRequest request, HttpServletResponse response) {
+        try {
+            TemplateExportParams params = new TemplateExportParams(excelTemplatePath);
+            Workbook workbook = ExcelExportUtil.exportExcel(params, map);
+            if (isIE(request)) {
+                fileName = URLEncoder.encode(fileName,ENCODING_UTF8);
+            } else {
+                fileName = new String(fileName.getBytes(ENCODING_UTF_8),ENCODING_ISO);
+            }
+            response.setHeader("content-disposition", "attachment;filename=" + fileName +EXPORT_SUFFIX_EXCEL);
+            response.setContentType("application/octet-stream");
+            response.flushBuffer();
+            workbook.write(response.getOutputStream());
+        } catch (UnsupportedEncodingException e) {
+            logger.error("导出excel失败", e);
+        } catch (IOException e) {
+            logger.error("导出excel失败", e);
+        }
+    }
+
+    /**
+     * 根据模板导出excel
+     * @param fileName  文件名称
+     * @param excelTemplatePath  excel模板路径
+     * @param map   传入的数据集合
+     * @param columns  需要合并的字段个数
+     * @param startRow 开始行
+     * @param endRow 结束行
+     * @param ints 合并的字段下标数组
+     * @param request
+     * @param response
+     */
+    protected void writeToExcelTemplateNeedMerge(String fileName, String excelTemplatePath, Map<String, Object> map,
+                                                 Integer columns, int startRow, int endRow, int[] ints, HttpServletRequest request, HttpServletResponse response) {
+        try {
+            TemplateExportParams params = new TemplateExportParams(excelTemplatePath);
+            Workbook workbook = ExcelExportUtil.exportExcel(params, map);
+            Map<Integer, int[]> mergeMap = new HashMap<Integer, int[]>(16);
+            for (int i = 0; i < columns; i++) {
+                mergeMap.put(i, ints);
+            }
+            PoiMergeCellUtil.mergeCells(workbook.getSheetAt(0), mergeMap,startRow,endRow);
+            if (isIE(request)) {
+                fileName = URLEncoder.encode(fileName,ENCODING_UTF8);
+            } else {
+                fileName = new String(fileName.getBytes(ENCODING_UTF_8),ENCODING_ISO);
+            }
+            response.setHeader("content-disposition", "attachment;filename=" + fileName +EXPORT_SUFFIX_EXCEL);
+            response.setContentType("application/octet-stream");
+            response.flushBuffer();
+            workbook.write(response.getOutputStream());
+        } catch (UnsupportedEncodingException e) {
+            logger.error("导出excel失败", e);
+        } catch (IOException e) {
+            logger.error("导出excel失败", e);
+        }
+    }
+
+    /**
+     *  根据word 模板导出word文件
+     * @param fileName  导出文件的名称
+     * @param wordTemplatePath  word模板文件路径 **.docx
+     * @param map   word模板中数据
+     * @param request
+     * @param response
+     */
+    protected void writeToWordTemplate(String fileName, String wordTemplatePath, Map<String, Object> map, HttpServletRequest request, HttpServletResponse response){
+        try {
+            XWPFDocument doc = WordExportUtil.exportWord07(wordTemplatePath, map);
+            // 直接下载不弹框
+            if (isIE(request)) {
+                fileName = URLEncoder.encode(fileName, ENCODING_UTF8);
+            } else {
+                fileName = new String(fileName.getBytes(ENCODING_UTF_8), ENCODING_ISO);
+            }
+            response.setHeader("content-disposition", "attachment;filename=" + fileName + EXPORT_SUFFIX_DOCX);
+            response.setContentType("application/octet-stream");
+            response.flushBuffer();
+            doc.write(response.getOutputStream());
+        } catch (Exception e) {
+            logger.error("导出word失败", e);
+        }
+    }
+
+    /**
+     * @Description 导出pdf
+     * @Author kuiwang
+     * @Date 10:35 2019/7/25
+     * @param title 标题
+     * @param fileName  文件名称
+     * @param pojoClass 导出实体类  **.class
+     * @param dataSet   数据集合
+     * @param request
+     * @param response
+     * @Return
      */
     protected void writeToPdf(String title, String fileName, Class<?> pojoClass, Collection<?> dataSet, HttpServletRequest request, HttpServletResponse response) {
         try {
@@ -81,8 +236,8 @@ public class ExportUtil extends PoiBaseView {
      * @Author kuiwang
      * @Date 14:26 2019/7/2
      * @param pdfTempLatePath   pdf模板路径
-     * @param fileName  生成pdf文件名称
-     * @param map  生成pdf的数据
+     * @param fileName  生成文件名称
+     * @param map  传入pdf的数据
      * @param request
      * @param response
      * @Return
@@ -182,90 +337,66 @@ public class ExportUtil extends PoiBaseView {
         }
     }
 
-
     /**
-     * 导出excel
-     *
-     * @throws IOException
-     */
-    protected void writeToExcel(String title, String fileName, Class<?> pojoClass, Collection<?> dataSet, HttpServletRequest request, HttpServletResponse response) {
-        try {
-        ExportParams params = new ExportParams(title, "测试", ExcelType.XSSF);
-        Workbook workbook = ExcelExportUtil.exportExcel(params, pojoClass, dataSet);
-        if (isIE(request)) {
-            fileName = URLEncoder.encode(fileName,ENCODING_UTF8);
-        } else {
-            fileName = new String(fileName.getBytes(ENCODING_UTF_8),ENCODING_ISO);
-        }
-        response.setHeader("content-disposition", "attachment;filename=" + fileName +EXPORT_SUFFIX_EXCEL);
-        response.setContentType("application/octet-stream");
-        response.flushBuffer();
-        workbook.write(response.getOutputStream());
-        } catch (UnsupportedEncodingException e) {
-            logger.error("导出excel失败", e);
-        } catch (IOException e) {
-            logger.error("导出excel失败", e);
-        }
-    }
-
-    /**
-     * 根据模板导出excel
-     *
-     * @throws IOException
-     */
-    protected void writeToExcelTemplate(String fileName, TemplateExportParams params, Map<String, Object> map, HttpServletRequest request, HttpServletResponse response) {
-        try {
-            Workbook workbook = ExcelExportUtil.exportExcel(params, map);
-            if (isIE(request)) {
-                fileName = URLEncoder.encode(fileName,ENCODING_UTF8);
-            } else {
-                fileName = new String(fileName.getBytes(ENCODING_UTF_8),ENCODING_ISO);
-            }
-            response.setHeader("content-disposition", "attachment;filename=" + fileName +EXPORT_SUFFIX_EXCEL);
-            response.setContentType("application/octet-stream");
-            response.flushBuffer();
-            workbook.write(response.getOutputStream());
-        } catch (UnsupportedEncodingException e) {
-            logger.error("导出excel失败", e);
-        } catch (IOException e) {
-            logger.error("导出excel失败", e);
-        }
-    }
-
-    /**
-     * 根据模板导出excel
-     * @param fileName
-     * @param params
-     * @param map
-     * @param columns  需要合并的字段个数
-     * @param startRow 开始行
-     * @param endRow 结束行
-     * @param ints 合并的值
+     * @Description 根据word模板导出pdf文件
+     *  主要没有找到破解的版的，就将第二步分解成2,3,4了，如果各位小伙伴找到破解的，欢迎留言，或者邮件 wangkui_wkgi@163.com 感谢！
+     * @param fileName  导出文件的名称
+     * @param wordTemplatePath  word模板文件路径**.docx
+     * @param map   word模板中数据
      * @param request
      * @param response
      */
-    protected void writeToExcelTemplateNeedMerge(String fileName, TemplateExportParams params, Map<String, Object> map,
-                                                 Integer columns, int startRow, int endRow, int[] ints, HttpServletRequest request, HttpServletResponse response) {
+    protected void writeWordTemplateToPdf(String fileName, String wordTemplatePath, Map<String, Object> map, HttpServletRequest request, HttpServletResponse response){
         try {
-            Workbook workbook = ExcelExportUtil.exportExcel(params, map);
-            Map<Integer, int[]> mergeMap = new HashMap<Integer, int[]>(16);
-            for (int i = 0; i < columns; i++) {
-                mergeMap.put(i, ints);
-            }
-            PoiMergeCellUtil.mergeCells(workbook.getSheetAt(0), mergeMap,startRow,endRow);
+            // 1.生成word文档
+            long l = System.currentTimeMillis();
+            XWPFDocument doc = WordExportUtil.exportWord07(wordTemplatePath, map);
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            doc.write(bos);
+
+            // 2.第一页添加空白页生成新的word文档（去水印使用）
+            com.spire.doc.Document document = new com.spire.doc.Document();
+            com.spire.doc.Document blankDoc = new com.spire.doc.Document();
+            Section section = blankDoc.addSection();
+            Paragraph paragraph = section.addParagraph();
+            paragraph.appendText("添加空白页做去除水印");
+            ByteArrayOutputStream os = new ByteArrayOutputStream();
+            blankDoc.saveToFile(os, FileFormat.Docm_2010);
+            ByteArrayInputStream is = new ByteArrayInputStream(os.toByteArray());
+            document.loadFromStream(is, FileFormat.Docm_2010);
+            os.close();
+            is.close();
+            blankDoc.close();
+            // 合成一个word文档
+            ByteArrayInputStream bis = new ByteArrayInputStream(bos.toByteArray());
+            document.insertTextFromStream(bis, FileFormat.Docm_2010);
+            bos.close();
+            bis.close();
+
+            // 3.转换为pdf文档
+            ByteArrayOutputStream pdfBos = new ByteArrayOutputStream();
+            document.saveToFile(pdfBos, FileFormat.PDF);
+            ByteArrayInputStream pdfBis = new ByteArrayInputStream(pdfBos.toByteArray());
+            pdfBos.close();
+            pdfBis.close();
+            document.close();
+
+            // 4.去除第一空白页并导出下载
             if (isIE(request)) {
-                fileName = URLEncoder.encode(fileName,ENCODING_UTF8);
+                fileName = URLEncoder.encode(fileName, ENCODING_UTF8);
             } else {
-                fileName = new String(fileName.getBytes(ENCODING_UTF_8),ENCODING_ISO);
+                fileName = new String(fileName.getBytes(ENCODING_UTF_8), ENCODING_ISO);
             }
-            response.setHeader("content-disposition", "attachment;filename=" + fileName +EXPORT_SUFFIX_EXCEL);
+            response.setHeader("content-disposition", "attachment;filename=" + fileName + EXPORT_SUFFIX_PDF);
             response.setContentType("application/octet-stream");
             response.flushBuffer();
-            workbook.write(response.getOutputStream());
-        } catch (UnsupportedEncodingException e) {
-            logger.error("导出excel失败", e);
-        } catch (IOException e) {
-            logger.error("导出excel失败", e);
+            PDDocument pdDocument = PDDocument.load(pdfBis);
+            pdDocument.removePage(0);
+            pdDocument.save(response.getOutputStream());
+            pdDocument.close();
+            logger.error("导出pdf完成,耗时：" + (System.currentTimeMillis() - l) + " 毫秒");
+        } catch (Exception e) {
+            logger.error("导出pdf失败", e);
         }
     }
 }

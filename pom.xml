@@ -14,6 +14,14 @@
         <version>2.0.6.RELEASE</version>
     </parent>
 
+    <repositories>
+        <repository>
+            <id>com.e-iceblue</id>
+            <name>e-iceblue</name>
+            <url>http://repo.e-iceblue.com/nexus/content/groups/public/</url>
+        </repository>
+    </repositories>
+
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -35,6 +43,7 @@
             <artifactId>mysql-connector-java</artifactId>
         </dependency>
 
+        <!-- easypoi -->
         <dependency>
             <groupId>cn.afterturn</groupId>
             <artifactId>easypoi-base</artifactId>
@@ -57,7 +66,7 @@
             <version>2.0.6.RELEASE</version>
         </dependency>
 
-        <!--   easypoi   -->
+        <!--   itextpdf   -->
         <dependency>
             <groupId>cn.afterturn</groupId>
             <artifactId>easypoi-spring-boot-starter</artifactId>
@@ -74,12 +83,27 @@
             <version>5.2.0</version>
         </dependency>
 
+        <!-- spire -->
+        <dependency>
+            <groupId>e-iceblue</groupId>
+            <artifactId>spire.doc</artifactId>
+            <version>2.2.0</version>
+        </dependency>
+
+        <!-- pdfbox -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox-app</artifactId>
+            <version>1.8.10</version>
+        </dependency>
+
         <dependency>
             <groupId>org.xhtmlrenderer</groupId>
             <artifactId>core-renderer</artifactId>
             <version>R8</version>
         </dependency>
 
+        <!-- junit -->
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
@@ -108,6 +132,34 @@
             <artifactId>fastjson</artifactId>
             <version>1.2.53</version>
         </dependency>
+
+
+        <!--  excel处理 -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi</artifactId>
+            <version>3.9</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>3.9</version>
+        </dependency>
+
+        <!-- 与之无关 -->
+        <!-- https://mvnrepository.com/artifact/javax.xml.rpc/javax.xml.rpc -->
+        <dependency>
+            <groupId>javax.xml.rpc</groupId>
+            <artifactId>javax.xml.rpc</artifactId>
+            <version>1.1.0-20081006</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/org.apache.axis/axis -->
+        <dependency>
+            <groupId>org.apache.axis</groupId>
+            <artifactId>axis</artifactId>
+            <version>1.4</version>
+        </dependency>
+
 
 
     </dependencies>
