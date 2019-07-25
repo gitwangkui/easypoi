@@ -33,12 +33,14 @@ public class StudentServiceImpl implements StudentService {
     @Override
     public List<Student> getAllStudents() {
         List<Student> students = new ArrayList<>();
-        Student s1 = new Student("1","1","1","1","1","1");
-        Student s2 = new Student("2","2","2","2","2","2");
-        students.add(s1);
-        students.add(s2);
+        students.add(new Student("1","张三","男","123@qq.com","wx123","176123"));
+        students.add(new Student("2","张三","男","456@qq.com","wx456","176456"));
+        students.add(new Student("3","李莫愁","女","1001@qq.com","wx1001","1761001"));
+        students.add(new Student("4","李莫愁","女","1002@qq.com","wx1002","1761002"));
+        students.add(new Student("5","旭宝宝+PDD+卢本伟+马老师","男","0001@qq.com","wx0001","1008611"));
         return students;
     }
+
 
 
 

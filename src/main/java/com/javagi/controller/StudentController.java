@@ -6,10 +6,13 @@ import com.javagi.service.StudentService;
 import com.javagi.utils.ExportUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,11 +23,13 @@ import java.util.Map;
  * @Date 2019/7/1 15:27
  * @Version 1.0
  */
+@RequestMapping("/export")
 @RestController
 public class StudentController extends ExportUtil {
 
     private static final String EXPORT_USER_TEST = "测试用户报表";
     private static final String EXPORT_USER_TEST_MODEL = "doc/测试用户报表导出模板.xls";
+    private static final String EXPORT_USER_TEST_WORD = "doc/测试导出word文档.docx";
 
     @Autowired
     private StudentService studentService;
@@ -45,7 +50,7 @@ public class StudentController extends ExportUtil {
     }
 
     /**
-     * @Description  根据excel模板导出表格
+     * @Description  根据excel模板导出表格 ok
      * @Author kuiwang
      * @Date 17:57 2019/7/1
      * @param request
@@ -57,13 +62,31 @@ public class StudentController extends ExportUtil {
         List<Student> students = studentService.getAllStudents();
         Map<String, Object> map = new HashMap<>();
         map.put("students", students);
-        TemplateExportParams params = new TemplateExportParams(EXPORT_USER_TEST_MODEL);
-        this.writeToExcelTemplate(EXPORT_USER_TEST, params, map, request, response);
+        this.writeToExcelTemplate(EXPORT_USER_TEST, EXPORT_USER_TEST_MODEL, map, request, response);
         return "Success!";
     }
 
     /**
-     * @Description 普通导出pdf
+     * @Description  根据excel模板导出合并表格 ok
+     * @Author kuiwang
+     * @Date 17:57 2019/7/1
+     * @param request
+     * @param response
+     * @Return
+     */
+    @GetMapping("/writeToExcelTemplateNeedMerge")
+    public String writeToExcelTemplateNeedMerge(HttpServletRequest request, HttpServletResponse response) {
+        List<Student> students = studentService.getAllStudents();
+        Map<String, Object> map = new HashMap<>();
+        map.put("students", students);
+        this.writeToExcelTemplateNeedMerge(EXPORT_USER_TEST, EXPORT_USER_TEST_MODEL, map,
+                3, 2, 2+students.size(), new int[]{1,2}, request, response);
+        return "Success!";
+    }
+
+
+    /**
+     * @Description 普通导出pdf ok
      * @Author kuiwang
      * @Date 18:01 2019/7/1
      * @param request
@@ -78,7 +101,7 @@ public class StudentController extends ExportUtil {
     }
 
     /**
-     * @Description 根据模板导出pdf
+     * @Description 根据模板导出pdf ok
      * @Author kuiwang
      * @Date 10:43 2019/7/2
      * @param request
@@ -105,9 +128,53 @@ public class StudentController extends ExportUtil {
         o.put("charMap",map);
         o.put("imgMap",map2);
 
-        String pdfTempLatePath = "doc/wordToPdf.pdf";
-        this.writeToPdfTemplate(pdfTempLatePath, "新pdf名称", o, request, response);
+        String pdfTempLatePath = "doc/要导出pdf模板.pdf";
+        this.writeToPdfTemplate(pdfTempLatePath, "导出后新pdf名称", o, request, response);
         return "Success!";
     }
 
+
+    /**
+     * @Description  根据模板导出word
+     * @Author kuiwang
+     * @Date 11:43 2019/7/25
+     * @param request
+     * @param response
+     * @Return
+     */
+    @GetMapping("/exprotWordTemplate")
+    public String exprotWordTemplate(HttpServletRequest request, HttpServletResponse response){
+        long l = System.currentTimeMillis();
+        Map<String, Object> map = new HashMap<String, Object>();
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd hh:MM:ss");
+        map.put("department", "Easypoi");
+        map.put("person", "JueYue");
+        map.put("time", sdf.format(new Date()));
+        map.put("me","JueYue");
+        map.put("date", "2015-01-03");
+        this.writeToWordTemplate("要导出word的名称", EXPORT_USER_TEST_WORD, map, request, response);
+        return "导出word 成功，耗时:" + (System.currentTimeMillis() - l) + " 毫秒";
+    }
+
+    /**
+     * @Description  根据word模板导出pdf
+     * @Author kuiwang
+     * @Date 11:43 2019/7/25
+     * @param request
+     * @param response
+     * @Return
+     */
+    @GetMapping("/writeWordTemplateToPdf")
+    public String writeWordTemplateToPdf(HttpServletRequest request, HttpServletResponse response){
+        long l = System.currentTimeMillis();
+        Map<String, Object> map = new HashMap<String, Object>();
+        SimpleDateFormat sdf = new SimpleDateFormat();
+        map.put("department", "Easypoi");
+        map.put("person", "JueYue");
+        map.put("time", sdf.format(new Date()));
+        map.put("me","JueYue");
+        map.put("date", "2015-01-03");
+        this.writeWordTemplateToPdf("要导出word的名称", EXPORT_USER_TEST_WORD, map, request, response);
+        return "导出pdf 成功，耗时:" + (System.currentTimeMillis() - l) + " 毫秒";
+    }
 }

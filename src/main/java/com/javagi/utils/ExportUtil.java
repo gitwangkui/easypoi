@@ -9,6 +9,7 @@ import cn.afterturn.easypoi.pdf.entity.PdfExportParams;
 import cn.afterturn.easypoi.util.PoiMergeCellUtil;
 import cn.afterturn.easypoi.view.PoiBaseView;
 import cn.afterturn.easypoi.word.WordExportUtil;
+import com.ibm.icu.text.SimpleDateFormat;
 import com.itextpdf.text.Document;
 import com.itextpdf.text.Image;
 import com.itextpdf.text.Rectangle;
@@ -139,10 +140,10 @@ public class ExportUtil extends PoiBaseView {
      * @param fileName  文件名称
      * @param excelTemplatePath  excel模板路径
      * @param map   传入的数据集合
-     * @param columns  需要合并的字段个数
-     * @param startRow 开始行
-     * @param endRow 结束行
-     * @param ints 合并的字段下标数组
+     * @param columns  需要合并的字段个数(从第一字段到你要合并的字段数量)
+     * @param startRow 开始行:excel表格的位置
+     * @param endRow 结束行：excel表格的位置
+     * @param ints 合并的字段下标位置数组
      * @param request
      * @param response
      */
@@ -212,7 +213,8 @@ public class ExportUtil extends PoiBaseView {
      */
     protected void writeToPdf(String title, String fileName, Class<?> pojoClass, Collection<?> dataSet, HttpServletRequest request, HttpServletResponse response) {
         try {
-            PdfExportParams params = new PdfExportParams(title, "system date:" + new Date());
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd hh:MM:ss");
+            PdfExportParams params = new PdfExportParams(title, sdf.format(new Date()));
             ByteArrayOutputStream baos = this.createTemporaryOutputStream();
             Document document = PdfExportUtil.exportPdf(params, pojoClass, dataSet, baos);
             if (isIE(request)) {
@@ -349,7 +351,6 @@ public class ExportUtil extends PoiBaseView {
     protected void writeWordTemplateToPdf(String fileName, String wordTemplatePath, Map<String, Object> map, HttpServletRequest request, HttpServletResponse response){
         try {
             // 1.生成word文档
-            long l = System.currentTimeMillis();
             XWPFDocument doc = WordExportUtil.exportWord07(wordTemplatePath, map);
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
             doc.write(bos);
@@ -361,15 +362,15 @@ public class ExportUtil extends PoiBaseView {
             Paragraph paragraph = section.addParagraph();
             paragraph.appendText("添加空白页做去除水印");
             ByteArrayOutputStream os = new ByteArrayOutputStream();
-            blankDoc.saveToFile(os, FileFormat.Docm_2010);
+            blankDoc.saveToFile(os, FileFormat.Docx);
             ByteArrayInputStream is = new ByteArrayInputStream(os.toByteArray());
-            document.loadFromStream(is, FileFormat.Docm_2010);
+            document.loadFromStream(is, FileFormat.Docx);
             os.close();
             is.close();
             blankDoc.close();
             // 合成一个word文档
             ByteArrayInputStream bis = new ByteArrayInputStream(bos.toByteArray());
-            document.insertTextFromStream(bis, FileFormat.Docm_2010);
+            document.insertTextFromStream(bis, FileFormat.Docx);
             bos.close();
             bis.close();
 
@@ -394,7 +395,6 @@ public class ExportUtil extends PoiBaseView {
             pdDocument.removePage(0);
             pdDocument.save(response.getOutputStream());
             pdDocument.close();
-            logger.error("导出pdf完成,耗时：" + (System.currentTimeMillis() - l) + " 毫秒");
         } catch (Exception e) {
             logger.error("导出pdf失败", e);
         }
