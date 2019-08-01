@@ -1,9 +1,14 @@
 package com.javagi.controller;
 
+import cn.afterturn.easypoi.excel.ExcelExportUtil;
+import cn.afterturn.easypoi.excel.entity.ExportParams;
 import cn.afterturn.easypoi.excel.entity.TemplateExportParams;
 import com.javagi.model.Student;
+import com.javagi.model.StudentExcel;
 import com.javagi.service.StudentService;
 import com.javagi.utils.ExportUtil;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -11,11 +16,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.*;
+import java.net.URLEncoder;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * @Description
@@ -27,8 +31,8 @@ import java.util.Map;
 @RestController
 public class StudentController extends ExportUtil {
 
-    private static final String EXPORT_USER_TEST = "测试用户报表";
-    private static final String EXPORT_USER_TEST_MODEL = "doc/测试用户报表导出模板.xls";
+    private static final String EXPORT_USER_TEST = "学生信息报表";
+    private static final String EXPORT_STUDENT_TEST_MODEL = "doc/学生信息导出模板.xls";
     private static final String EXPORT_USER_TEST_WORD = "doc/测试导出word文档.docx";
 
     @Autowired
@@ -43,10 +47,22 @@ public class StudentController extends ExportUtil {
      * @Return
      */
     @GetMapping("/exportExcel")
-    public String exportExcel(HttpServletRequest request, HttpServletResponse response) {
+    public void exportExcel(HttpServletRequest request, HttpServletResponse response) throws Exception{
         List<Student> students = studentService.getAllStudents();
-        this.writeToExcel("学生信息", "学生详情信息", Student.class, students, request, response);
-        return "Success!";
+        List<StudentExcel> studentExcels = new ArrayList<>();
+        students.forEach( student -> {
+            StudentExcel studentExcel = new StudentExcel();
+            BeanUtils.copyProperties(student, studentExcel);
+            studentExcels.add(studentExcel);
+        });
+
+        Workbook workbook = ExcelExportUtil.exportExcel(new ExportParams("学生信息报表", "学生"), StudentExcel.class, studentExcels);
+        response.setHeader("content-disposition", "attachment;filename=" + "学生信息报表" + EXPORT_SUFFIX_EXCEL);
+        response.setContentType("application/octet-stream");
+        response.flushBuffer();
+        workbook.write(response.getOutputStream());
+        //this.writeToExcel("学生信息", "学生详情信息", StudentExcel.class, studentExcels, request, response);
+        logger.info("-==========成功导出 EXCEL  表格========");
     }
 
     /**
@@ -62,7 +78,7 @@ public class StudentController extends ExportUtil {
         List<Student> students = studentService.getAllStudents();
         Map<String, Object> map = new HashMap<>();
         map.put("students", students);
-        this.writeToExcelTemplate(EXPORT_USER_TEST, EXPORT_USER_TEST_MODEL, map, request, response);
+        this.writeToExcelTemplate(EXPORT_USER_TEST, EXPORT_STUDENT_TEST_MODEL, map, request, response);
         return "Success!";
     }
 
@@ -79,7 +95,7 @@ public class StudentController extends ExportUtil {
         List<Student> students = studentService.getAllStudents();
         Map<String, Object> map = new HashMap<>();
         map.put("students", students);
-        this.writeToExcelTemplateNeedMerge(EXPORT_USER_TEST, EXPORT_USER_TEST_MODEL, map,
+        this.writeToExcelTemplateNeedMerge(EXPORT_USER_TEST, EXPORT_STUDENT_TEST_MODEL, map,
                 3, 2, 2+students.size(), new int[]{1,2}, request, response);
         return "Success!";
     }
@@ -96,7 +112,13 @@ public class StudentController extends ExportUtil {
     @GetMapping("/exportPdf")
     public String exportPdf(HttpServletRequest request, HttpServletResponse response) {
         List<Student> students = studentService.getAllStudents();
-        this.writeToPdf("学生信息", "学生详情信息", Student.class, students, request, response);
+        List<StudentExcel> studentExcels = new ArrayList<>();
+        students.forEach( student -> {
+            StudentExcel studentExcel = new StudentExcel();
+            BeanUtils.copyProperties(student, studentExcel);
+            studentExcels.add(studentExcel);
+        });
+        this.writeToPdf("学生信息", "学生详情信息", StudentExcel.class, studentExcels, request, response);
         return "Success!";
     }
 

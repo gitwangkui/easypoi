@@ -1,11 +1,22 @@
 package com.javagi.model;
 
-public class Student {
+import cn.afterturn.easypoi.excel.annotation.Excel;
+
+import java.io.Serializable;
+
+public class StudentExcel implements Serializable {
+
+    @Excel(name = "编号" )
     private String id;
+    @Excel(name = "姓名" )
     private String one;
+    @Excel(name = "姓别" )
     private String two;
+    @Excel(name = "电子邮件" )
     private String zq_xm;
+    @Excel(name = "微信号" )
     private String cw_xm;
+    @Excel(name = "联系电话" )
     private String tj_xm;
 
     public String getId() {
@@ -56,13 +67,4 @@ public class Student {
         this.tj_xm = tj_xm;
     }
 
-
-    public Student(String id, String one, String two, String zq_xm, String cw_xm, String tj_xm) {
-        this.id = id;
-        this.one = one;
-        this.two = two;
-        this.zq_xm = zq_xm;
-        this.cw_xm = cw_xm;
-        this.tj_xm = tj_xm;
-    }
 }
