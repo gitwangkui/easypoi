@@ -2,7 +2,6 @@ package com.javagi.controller;
 
 import cn.afterturn.easypoi.excel.ExcelExportUtil;
 import cn.afterturn.easypoi.excel.entity.ExportParams;
-import cn.afterturn.easypoi.excel.entity.TemplateExportParams;
 import com.javagi.model.Student;
 import com.javagi.model.StudentExcel;
 import com.javagi.service.StudentService;
@@ -16,8 +15,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.*;
-import java.net.URLEncoder;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
@@ -62,7 +59,7 @@ public class StudentController extends ExportUtil {
         response.flushBuffer();
         workbook.write(response.getOutputStream());
         //this.writeToExcel("学生信息", "学生详情信息", StudentExcel.class, studentExcels, request, response);
-        logger.info("-==========成功导出 EXCEL  表格========");
+        System.out.println("-==========成功导出 EXCEL  表格========");
     }
 
     /**
