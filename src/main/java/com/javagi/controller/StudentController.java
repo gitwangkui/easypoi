@@ -6,15 +6,23 @@ import com.javagi.model.Student;
 import com.javagi.model.StudentExcel;
 import com.javagi.service.StudentService;
 import com.javagi.utils.ExportUtil;
+import com.spire.doc.FileFormat;
+import com.spire.doc.Section;
+import com.spire.doc.documents.Paragraph;
+import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
@@ -196,4 +204,63 @@ public class StudentController extends ExportUtil {
         this.writeWordTemplateToPdf("要导出word的名称", EXPORT_USER_TEST_WORD, map, request, response);
         return "导出pdf 成功，耗时:" + (System.currentTimeMillis() - l) + " 毫秒";
     }
+
+    /**
+     * @Description     测试
+     * @Author kuiwang
+     * @Date 13:18 2019/9/24
+     * @param file
+     * //@param pdfPath
+     * @param request
+     * @param response
+     * @Return
+     */
+    @GetMapping("/wordToPdf")
+    public static String wordToPdf(MultipartFile file, HttpServletRequest request, HttpServletResponse response) {
+        long l = System.currentTimeMillis();
+        try {
+            String originalFilename = file.getOriginalFilename();
+            String fileName = originalFilename.substring(0, originalFilename.lastIndexOf('.'));
+            ByteArrayInputStream bis = new ByteArrayInputStream(file.getBytes());
+            // 合成后的doc
+            com.spire.doc.Document doc = new com.spire.doc.Document();
+            // 空白页的doc
+            com.spire.doc.Document blankDoc = new com.spire.doc.Document();
+            Section section = blankDoc.addSection();
+            Paragraph paragraph = section.addParagraph();
+            paragraph.appendText("添加空白页做去除水印");
+            ByteArrayOutputStream os = new ByteArrayOutputStream();
+            blankDoc.saveToFile(os, FileFormat.Docx);
+            // 添加空白页
+            ByteArrayInputStream is = new ByteArrayInputStream(os.toByteArray());
+            doc.loadFromStream(is, FileFormat.Docx);
+            doc.insertTextFromStream(bis, FileFormat.Docx);
+            os.close();
+            is.close();
+            blankDoc.close();
+
+            // 转换为pdf文档
+            ByteArrayOutputStream pdfBos = new ByteArrayOutputStream();
+            doc.setJPEGQuality(40);
+            doc.saveToFile(pdfBos, FileFormat.PDF);
+            ByteArrayInputStream pdfBis = new ByteArrayInputStream(pdfBos.toByteArray());
+            pdfBos.close();
+            pdfBis.close();
+            doc.close();
+
+            // 去除pdf第一空白页并导出
+            String pdfPath = "D:\\QRCodeTemp";
+            pdfPath = pdfPath + File.separator + fileName + ".pdf";
+            PDDocument pdDocument = PDDocument.load(pdfBis);
+            pdDocument.removePage(0);
+            pdDocument.save(pdfPath);
+            pdDocument.close();
+
+            logger.error("导出pdf成功！耗时："+(System.currentTimeMillis() - l) + " ms");
+        } catch (Exception e) {
+            logger.error("导出pdf失败！此事必有蹊跷，定当测查！", e);
+        }
+        return "======导出pdf成功==耗时：" + (System.currentTimeMillis() - l) + " ms";
+    }
+
 }

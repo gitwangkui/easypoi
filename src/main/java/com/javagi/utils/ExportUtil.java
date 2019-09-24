@@ -20,14 +20,15 @@ import com.spire.doc.documents.Paragraph;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
 import java.net.URLEncoder;
 import java.util.Collection;
 import java.util.Date;
@@ -54,6 +55,7 @@ import java.util.Map;
  * @Description: 导出方法包装类
  */
 public class ExportUtil extends PoiBaseView {
+    public static Logger logger = LoggerFactory.getLogger(ExportUtil.class);
 
     public static final String ENCODING_UTF_8 = "UTF-8";
     public static final String ENCODING_UTF8 = "UTF8";
@@ -233,7 +235,7 @@ public class ExportUtil extends PoiBaseView {
 
 
     /**
-     * @Description 根据模板导出pdf文件, 生成后直接导出下载
+     * @Description 根据pdf模板导出pdf文件, 生成后直接导出下载
      *              参考：https://www.cnblogs.com/wangpeng00700/p/8418594.html
      * @Author kuiwang
      * @Date 14:26 2019/7/2
@@ -399,5 +401,6 @@ public class ExportUtil extends PoiBaseView {
             logger.error("导出pdf失败", e);
         }
     }
+
 }
 
